@@ -2,7 +2,6 @@ package golang_rss_reader_package
 
 import (
 	"encoding/xml"
-	"fmt"
 	"github.com/paulrosania/go-charset/charset"
 	"net/http"
 	"time"
@@ -11,24 +10,27 @@ import (
 //date type for date-time parsing as it is not straight-forward with go
 type date string
 
-//Parse (date function) and returns Time, error
-func (d date) Parse() (time.Time, error) {
+//parse (date function) and returns Time, error
+func (d date) parse() (time.Time, error) {
 
 	t, err := d.parseWithFormat(time.RFC822) // RSS 2.0 spec
 	if err != nil {
+
 		t, err = d.parseWithFormat(time.RFC3339) // Atom
 	}
 
 	return t, err
 }
 
-//ParseWithFormat (date function), takes a string and returns Time, error
+//parseWithFormat (date function), takes a string and returns Time, error
 func (d date) parseWithFormat(format string) (time.Time, error) {
+
 	return time.Parse(format, string(d))
 }
 
-//Channel struct for RSS input (Used for Input RSS)
+//channel struct for RSS input (Used for Input RSS)
 type channel struct {
+
 	Title         string `xml:"title"`
 	Link          string `xml:"link"`
 	Description   string `xml:"description"`
@@ -37,14 +39,21 @@ type channel struct {
 	Item          []item `xml:"item"`
 }
 
-//ItemEnclosure struct for each Item Enclosure (Used for Input RSS)
+//itemEnclosure struct for each Item Enclosure (Used for Input RSS)
 type itemEnclosure struct {
+
 	URL  string `xml:"url,attr"`
 	Type string `xml:"type,attr"`
 }
 
-//Item struct for each Item in the Channel (Used for Input RSS)
+type source struct {
+	Title string `xml:"title,omitempty"`
+	URL   string `xml:"url,omitempty"`
+}
+
+//item struct for each Item in the Channel (Used for Input RSS)
 type item struct {
+
 	Title       string          `xml:"title"`
 	Link        string          `xml:"link"`
 	Comments    string          `xml:"comments"`
@@ -52,6 +61,7 @@ type item struct {
 	GUID        string          `xml:"guid"`
 	Category    []string        `xml:"category"`
 	Enclosure   []itemEnclosure `xml:"enclosure"`
+	Source 		source 			`xml:"source"`
 	Description string          `xml:"description"`
 	Author      string          `xml:"author"`
 	Content     string          `xml:"content"`
@@ -70,30 +80,42 @@ type RssItem struct {
 	Description string
 }
 
-func Parse(urls []string) []RssItem {
+//Parse exported method used as a package function
+func Parse(urls []string) ([]RssItem, error) {
+
+	if len(urls) == 0 {
+
+		return []RssItem{}, nil
+	}
 
 	c := make(chan []RssItem)
-	defer close(c)
+	var errs error
 
 	var result []RssItem
+	//var errorResult error
 
 	for _, url := range urls {
 
-		go parseUrl(url, c)
+		go func(url string) {
+			errs = parseUrl(url, c)
+			if errs != nil {
+				defer close(c)
+			}
+		}(url)
+
 		result = append(result, <- c...)
 	}
 
-	return result
+	return result, errs
 }
 
-func parseUrl(url string, c chan []RssItem) {
+func parseUrl(url string, c chan []RssItem) error {
 
 	resp, err := http.Get(url)
 
 	if err != nil {
 
-		fmt.Printf("Error GET: %v\n", err)
-		return
+		return err
 	}
 
 	defer resp.Body.Close()
@@ -106,9 +128,9 @@ func parseUrl(url string, c chan []RssItem) {
 		Channel channel `xml:"channel"`
 	}
 
-	if err := xmlDecoder.Decode(&rss); err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return
+	if err = xmlDecoder.Decode(&rss); err != nil {
+
+		return err
 	}
 
 	var items []RssItem
@@ -116,9 +138,10 @@ func parseUrl(url string, c chan []RssItem) {
 	for _, item := range rss.Channel.Item {
 
 		items = append(items, RssItem{
+
 			Title:       item.Title,
-			Source:      item.Author,
-			SourceUrl:   "",
+			Source:      item.Source.Title,
+			SourceUrl:   item.Source.URL,
 			Link:        item.Link,
 			PublishDate: item.PubDate,
 			Description: item.Description,
@@ -126,4 +149,6 @@ func parseUrl(url string, c chan []RssItem) {
 	}
 
 	c <- items
+
+	return nil
 }
