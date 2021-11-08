@@ -1,4 +1,4 @@
-package main
+package golang_rss_reader_package
 
 import (
 	"encoding/xml"
@@ -70,27 +70,23 @@ type RssItem struct {
 	Description string
 }
 
-func main()  {
+func Parse(urls []string) []RssItem {
 
-	urls := []string{
-		"https://helpdeskgeek.com/feed/",
-	}
+	c := make(chan []RssItem)
+	defer close(c)
 
-	c := make(chan RssItem)
+	var result []RssItem
 
 	for _, url := range urls {
-		go Parse(url, c)
+
+		go parseUrl(url, c)
+		result = append(result, <- c...)
 	}
 
-	result := make([]RssItem, len(urls))
-
-	for i, _ := range result {
-		result[i] = <-c
-		fmt.Printf("Error GET: %v\n", result[i])
-	}
+	return result
 }
 
-func Parse(url string, c chan RssItem) {
+func parseUrl(url string, c chan []RssItem) {
 
 	resp, err := http.Get(url)
 
@@ -115,15 +111,19 @@ func Parse(url string, c chan RssItem) {
 		return
 	}
 
+	var items []RssItem
+
 	for _, item := range rss.Channel.Item {
 
-		c <- RssItem{
+		items = append(items, RssItem{
 			Title:       item.Title,
 			Source:      item.Author,
 			SourceUrl:   "",
 			Link:        item.Link,
 			PublishDate: item.PubDate,
 			Description: item.Description,
-		}
+		})
 	}
+
+	c <- items
 }
