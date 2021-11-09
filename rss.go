@@ -10,12 +10,12 @@ import (
 //RssItem (Used for required output)
 type RssItem struct {
 
-	Title string
-	Source string
-	SourceUrl string
-	Link string
-	PublishDate date
-	Description string
+	Title string 		`json:"title,omitempty"`
+	Source string 		`json:"source,omitempty"`
+	SourceUrl string 	`json:"source_url,omitempty"`
+	Link string 		`json:"link,omitempty"`
+	PublishDate date 	`json:"publish_date,omitempty"`
+	Description string	`json:"description,omitempty"`
 }
 
 //Parse exported method used as a package function
