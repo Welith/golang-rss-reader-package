@@ -5,59 +5,69 @@ import (
 	"testing"
 )
 
+//TestParseEmptyUrl should return an empty array
 func TestParseEmptyUrl(t *testing.T) {
 
-	emptyArray, err := Parse([]string{})
+	emptyArray := Parse([]string{})
 
-	if reflect.DeepEqual(emptyArray, []RssItem{}) && err == nil {
+	if reflect.DeepEqual(emptyArray, []RssItem{}) {
 		t.Logf("Parse() succeeded, expected %v, got %v", []RssItem{}, emptyArray)
 	} else {
 		t.Errorf("Parse() failed, expected %v, got %v", []RssItem{}, emptyArray)
-		if err != nil {
-			t.Errorf("Actual error %v: ", err)
-		}
 	}
 }
 
+// TestParseInvalidUrlScheme should return an array of the valid urls, disregarding the erroneous one
+// https://www.online-tech-tips.com/feed/ has 15 feeds
+// test.com has a missing scheme
 func TestParseInvalidUrlScheme(t *testing.T) {
 
-	invalidUrl, err := Parse([]string{"test"})
+	feeds := Parse([]string{
+		"test.com",
+		"https://www.online-tech-tips.com/feed/"})
 
-	t.Logf("%v", invalidUrl)
-
-	if err != nil {
-		t.Logf("Expected error: %v, got: %v ", "Get \"test\": unsupported protocol scheme \"\"", err)
+	if len(feeds) == 15 {
+		t.Logf("Expected result length given. Expected %v, got %v", 15, len(feeds))
 
 	} else {
 
-		t.Errorf("Parse() failed to produce error, expected %v, got %v", "Get \"test\": unsupported protocol scheme \"\"", invalidUrl)
+		t.Errorf("Parse() failed where the expected feed length is %v, got %v", 15, len(feeds))
 	}
 }
 
 
-
+// TestParseInvalidRSSFeed same as above test, where the error here is invalid rss feed given
 func TestParseInvalidRSSFeed(t *testing.T) {
 
-	invalidUrl, err := Parse([]string{"https://facebook.com"})
+	feeds := Parse([]string{
+		"https://facebook.com",
+		"https://www.online-tech-tips.com/feed/",
+	})
 
-	if err != nil {
-		t.Logf("Expected error: %v, got: %v ", "XML syntax error on line 3: invalid character entity & (no semicolon)", err)
+	if len(feeds) == 15 {
+		t.Logf("Expected result length given. Expected %v, got %v", 15, len(feeds))
 
 	} else {
 
-		t.Errorf("Parse() failed to produce error, expected %v, got %v", "XML syntax error on line 3: invalid character entity & (no semicolon)", invalidUrl)
+		t.Errorf("Parse() failed where the expected feed length is %v, got %v", 15, len(feeds))
 	}
 }
 
+// TestParse shows the correct operation of parse with 2 feeds
+// https://www.theboltonnews.co.uk/news/rss/ has 50 feeds
+// https://www.online-tech-tips.com/feed/ has 15
 func TestParse(t *testing.T) {
 
-	feedItems, err := Parse([]string{"https://www.theboltonnews.co.uk/news/rss/"})
+	feeds := Parse([]string{
+		"https://www.theboltonnews.co.uk/news/rss/",
+		"https://www.online-tech-tips.com/feed/",
+	})
 
-	if err == nil {
-		if feedItems[0].Title != "" {
-			t.Logf("Parse succeeded.")
-		}
+	if len(feeds) == 65 {
+		t.Logf("Expected result length given. Expected %v, got %v", 65, len(feeds))
+
 	} else {
-		t.Errorf("Parse failed with error %v:", err)
+
+		t.Errorf("Parse() failed where the expected feed length is %v, got %v", 65, len(feeds))
 	}
 }
