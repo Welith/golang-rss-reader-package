@@ -1,4 +1,4 @@
-module github.com/Welith/golang-rss-service
+module github.com/Welith/golang-rss-package
 
 go 1.17
 
